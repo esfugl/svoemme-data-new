@@ -6,16 +6,10 @@ import requests
 i_morgen = datetime.utcnow() + timedelta(days=1)
 dato_streng = i_morgen.strftime("%Y-%m-%dT06:00:00Z")
 
-# 2. Den officielle API-adresse til DMI EDR
-url = "https://opendataapi.dmi.dk/v1/forecastedr/collections/harmonie_dini_sf/position"
-
-# 3. Parametre tilpasset DMI's standarder (f=covjson i stedet for f=json)
-params = {
-    "coords": "POINT(12.635 55.655)",     # Amager Strand
-    "datetime": dato_streng,
-    "parameter-name": "temperature-2m",   # Vi beder specifikt om lufttemperatur
-    "f": "covjson"                         # DETTE RETTER FEJLEN: CoverageJSON format
-}
+# 2. Vi bygger URL'en manuelt som en rå streng for at forhindre, 
+# at requests-biblioteket ændrer parenteser og mellemrum til %28 og +
+base_url = "https://opendataapi.dmi.dk/v1/forecastedr/collections/harmonie_dini_sf/position"
+full_url = f"{base_url}?coords=POINT(12.635 55.655)&datetime={dato_streng}&parameter-name=temperature-2m"
 
 headers = {
     "Accept": "application/json",
@@ -23,15 +17,16 @@ headers = {
 }
 
 print("Forbinder til DMI Frie Data API...")
-print(f"Henter vejrdata for Amager Strand ({dato_streng})...")
+print(f"Henter vejrdata via URL: {full_url}")
 
 try:
-    response = requests.get(url, params=params, headers=headers)
+    # 3. Lav API-kaldet uden brug af params-dictionary for at bevare rå tekst
+    response = requests.get(full_url, headers=headers)
     
     print(f"Server svarede med statuskode: {response.status_code}")
     response.raise_for_status()
 
-    # Svaret modtages i JSON-struktur, selvom det følger covjson-standarden
+    # 4. Fortolk JSON-dataen
     data = response.json()
     print("\n=== SUCCESS: VEJRDATA MODTAGET FRA DMI ===")
     print(json.dumps(data, indent=4, ensure_ascii=False))
