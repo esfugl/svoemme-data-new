@@ -1,0 +1,38 @@
+name: Automatisk DMI Vejr-Høst
+
+on:
+  schedule:
+    # Kører hver dag kl. 06:00 UTC (Svarer til kl. 08:00 dansk sommertid)
+    - cron: '0 6 * * *'
+  workflow_dispatch: # Gør det muligt at starte scriptet manuelt med en knap på GitHub
+
+jobs:
+  run-and-save:
+    runs-on: ubuntu-latest
+    
+    # Giver GitHub Actions rettigheder til at skrive og gemme filer i dit repo
+    permissions:
+      contents: write
+
+    steps:
+      - name: 1. Hent kildekode fra repository
+        uses: actions/checkout@v4
+
+      - name: 2. Opsæt Python-miljø
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 3. Installer nødvendige pakker
+        run: pip install requests
+
+      - name: 4. Kør vejr-scriptet
+        run: python script.py
+
+      - name: 5. Commit og Push ændringer tilbage til GitHub
+        run: |
+          git config --global user.name "GitHub Action Bot"
+          git config --global user.email "actions@github.com"
+          git add *.json
+          # Laver kun et commit, hvis der faktisk er kommet nye filer
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Automatisk opdatering: Vejrdata hentet" && git push)
