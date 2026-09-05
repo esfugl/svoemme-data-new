@@ -4,48 +4,23 @@ on:
   schedule:
     # Kører hver dag kl. 06:00 UTC (Svarer til kl. 08:00 dansk sommertid)
     - cron: '0 6 * * *'
-  workflow_dispatch: # Gør det muligt at starte scriptet manuelt med en knap på GitHub
+  workflow_dispatch: # Gør det muligt at starte scriptet manuelt med en knap
 
 jobs:
-  run-and-save:
+  run-and-display:
     runs-on: ubuntu-latest
-    
-    # Giver GitHub Actions rettigheder til at skrive og gemme filer i dit repo
-    permissions:
-      contents: write
 
     steps:
-      - name: 1. Hent kildekode fra repository
+      - name: 1. Hent kildekode
         uses: actions/checkout@v4
-        with:
-          # persist-credentials sikrer, at tokenet genbruges til git push i trin 5
-          persist-credentials: true
 
       - name: 2. Opsæt Python-miljø
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      - name: 3. Installer nødvendige pakker
+      - name: 3. Installer pakker
         run: pip install requests
 
-      - name: 4. Kør vejr-scriptet
+      - name: 4. Kør script og vis vejrdata
         run: python script.py
-
-      - name: 5. Commit og Push ændringer tilbage til GitHub
-        env:
-          # Vi sender tokenet direkte med ind i miljøet for Git-kommandoen
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@://github.com"
-          
-          git add *.json
-          
-          # Tjekker om der er ændringer at gemme, og pusher ved hjælp af det indbyggede token
-          if ! git diff --cached --quiet; then
-            git commit -m "Automatisk opdatering: Vejrdata hentet"
-            git push https://x-access-token:${GITHUB_TOKEN}@://github.com{{ github.repository }}.git HEAD:${{ github.ref_name }}
-          else
-            echo "Ingen nye ændringer at committe."
-          fi
