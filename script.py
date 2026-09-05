@@ -6,48 +6,41 @@ import requests
 i_morgen = datetime.utcnow() + timedelta(days=1)
 dato_streng = i_morgen.strftime("%Y-%m-%dT06:00:00Z")
 
-# 2. Den præcise EDR API-sti til positioner jf. DMI's specifikationer
-# Vi holder os strengt til formatet /position uden indlejrede koordinater i stien
-url = "https://dmi.dk"
+# 2. Den korrekte, aktive URL hos Klimadatastyrelsen (DMI's nye hjemsted for Frie Data)
+url = "https://klimadatastyrelsen.dk"
 
-# 3. Parametrene sendes som en dictionary. Requests-biblioteket sørger selv 
-# for at sammensætte query-strengen korrekt.
+# 3. Parametre til API'et
 params = {
     "coords": "POINT(12.635 55.655)",  # Amager Strand (længdegrad breddegrad)
     "datetime": dato_streng,
-    "f": "json"                         # Tvinger formatet til JSON i stedet for HTML
+    "f": "json"                         # Vi beder om rå JSON data
 }
 
-# 4. Vi tilføjer de nødvendige system-headers for at fortælle DMI, at vi er et script
 headers = {
     "Accept": "application/json",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) GitHubActions/1.0"
+    "User-Agent": "GitHubActions-DMI-WeatherFetch/1.0"
 }
 
-print("Forinder til DMI Frie Data API...")
-print(f"Forespørger på Amager Strand for tidspunktet: {dato_streng}")
+print("Forbinder til Klimadatastyrelsens Vejr-API...")
+print(f"Henter data for Amager Strand til dato: {dato_streng}")
 
 try:
-    # Lav kaldet med 'allow_redirects=False' så vi fanger det med det samme, hvis den prøver at hoppe til dmi.dk forsiden
-    response = requests.get(url, params=params, headers=headers, allow_redirects=False)
+    # Vi tillader omdirigeringer her, da styrelsen kan sende os til en specifik dataserver
+    response = requests.get(url, params=params, headers=headers, allow_redirects=True)
     
-    print(f"Server svarede med HTTP-status: {response.status_code}")
-    
-    if response.status_code in [301, 302, 307]:
-        print("Fejl: DMI forsøgte at omdirigere kaldet til TYPO3-forsiden. URL'en eller parametrene afvises.")
-        print(f"Omdirigerings-adresse var: {response.headers.get('Location')}")
-    else:
-        response.raise_for_status()
-        
-        # 5. Fortolk JSON-dataen
-        data = response.json()
-        print("\n=== SUCCESS: VEJRDATA MODTAGET FRA DMI ===")
-        print(json.dumps(data, indent=4, ensure_ascii=False))
+    print(f"Server svarede med statuskode: {response.status_code}")
+    response.raise_for_status()
+
+    # 4. Fortolk JSON-dataen
+    data = response.json()
+    print("\n=== SUCCESS: VEJRDATA MODTAGET ===")
+    print(json.dumps(data, indent=4, ensure_ascii=False))
 
 except requests.exceptions.HTTPError as http_err:
-    print(f"HTTP-Fejl opstod: {http_err}")
+    print(f"HTTP Fejl: {http_err}")
+    print(f"Serverens svar var: {response.text[:300]}")
 except json.JSONDecodeError:
-    print("Fejl: Kunne ikke fortolke svaret som JSON. Svaret startede med:")
+    print("Fejl: Kunne ikke læse svaret som JSON. Svaret startede med:")
     print(response.text[:300])
 except requests.exceptions.RequestException as e:
     print(f"Netværksfejl: {e}")
